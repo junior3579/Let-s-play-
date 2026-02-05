@@ -3,15 +3,15 @@ import os
 from datetime import datetime, timezone, timedelta
 import threading
 
-# Configurações do Banco de Dados (Via Variáveis de Ambiente)
-# Prioriza variáveis de ambiente, com fallbacks para os valores fornecidos no projeto
+# Configurações do Banco de Dados (Neon PostgreSQL)
+# Prioriza variáveis de ambiente, com fallbacks para os valores do Neon
 DB_CONFIG = {
-    "user": os.environ.get("DB_USER", "postgres.kubvbqvpuwecrlwwmrvc"),
-    "password": os.environ.get("DB_PASSWORD", "Qwer35791931@"),
-    "host": os.environ.get("DB_HOST", "aws-1-sa-east-1.pooler.supabase.com"),
-    "database": os.environ.get("DB_NAME", "postgres"),
+    "user": os.environ.get("DB_USER", "neondb_owner"),
+    "password": os.environ.get("DB_PASSWORD", ""), # Senha deve ser via ENV
+    "host": os.environ.get("DB_HOST", "ep-cool-darkness-a5f9x8v1.us-east-2.aws.neon.tech"),
+    "database": os.environ.get("DB_NAME", "neondb"),
     "port": int(os.environ.get("DB_PORT", 5432)),
-    "ssl_context": os.environ.get("DB_SSL", "True") == "True"
+    "ssl_context": True # Neon exige SSL
 }
 
 class PG8000Pool:
@@ -59,9 +59,9 @@ class PG8000Pool:
 
 # Criar pool de conexões
 try:
-    # Reduzido para 1, 2 para evitar erro de MaxClients no Supabase Transaction Mode
+    # Para o Neon (Serverless), um pool pequeno é ideal
     connection_pool = PG8000Pool(
-        1, 2,
+        1, 5,
         user=DB_CONFIG["user"],
         password=DB_CONFIG["password"],
         host=DB_CONFIG["host"],
@@ -69,7 +69,7 @@ try:
         database=DB_CONFIG["database"],
         ssl_context=DB_CONFIG["ssl_context"]
     )
-    print("✅ Pool de conexões com Supabase configurado!")
+    print("✅ Pool de conexões com Neon configurado!")
 except Exception as e:
     print(f"❌ Erro ao criar pool de conexões: {e}")
     connection_pool = None
