@@ -653,11 +653,9 @@ def transferir_lucro():
         return jsonify({'error': 'ID do usuário e valor são obrigatórios'}), 400
         
     try:
-        valor_transferir = int(float(valor_transferir))
+        valor_transferir = float(valor_transferir)
         if valor_transferir <= 0:
             return jsonify({'error': 'O valor deve ser maior que zero'}), 400
-        if valor_transferir % 2 != 0:
-            return jsonify({'error': 'O valor deve ser par, conforme as regras do sistema'}), 400
     except ValueError:
         return jsonify({'error': 'Valor inválido'}), 400
         
@@ -683,10 +681,10 @@ def transferir_lucro():
     )
     
     if sucesso_cofre:
-        # 2. Aumentar saldo do usuário (garantindo que seja inteiro conforme regras do sistema)
+        # 2. Aumentar saldo do usuário
         sucesso_usuario = executar_query_commit(
-            "UPDATE usuarios SET reais = CAST(reais + %s AS INTEGER) WHERE id = %s",
-            (int(valor_transferir), usuario_id)
+            "UPDATE usuarios SET reais = reais + %s WHERE id = %s",
+            (valor_transferir, usuario_id)
         )
         
         if sucesso_usuario:

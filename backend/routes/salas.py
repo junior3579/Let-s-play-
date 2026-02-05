@@ -6,11 +6,10 @@ salas_bp = Blueprint('salas', __name__)
 
 def validar_reais(reais):
     try:
-        reais_int = int(reais)
-        if reais_int <= 0:
+        reais_val = float(reais)
+        if reais_val <= 0:
             return None, "O valor de reais deve ser maior que 0"
-        # Aceita números pares e ímpares
-        return reais_int, None
+        return reais_val, None
     except:
         return None, "Por favor, insira um valor válido"
 
@@ -79,7 +78,7 @@ def criar_sala():
     if valor_inicial_validado is None:
         return jsonify({'error': erro}), 400
     
-    valor_necessario = valor_inicial_validado // 2
+    valor_necessario = valor_inicial_validado / 2
     if saldo_usuario < valor_necessario:
         return jsonify({'error': f'Saldo insuficiente para criar esta sala. Você precisa de pelo menos {valor_necessario} reais (metade do valor da sala).'}), 400
     
@@ -98,7 +97,7 @@ def criar_sala():
     
     if sucesso:
         # Debitar metade do valor inicial do criador
-        novos_reais = saldo_usuario - (valor_inicial_validado // 2)
+        novos_reais = saldo_usuario - (valor_inicial_validado / 2)
         executar_query_commit("UPDATE usuarios SET reais = %s WHERE nome = %s", (novos_reais, criador))
         return jsonify({
             'message': f'Sala {nome_sala} criada com sucesso',
@@ -131,7 +130,7 @@ def entrar_em_sala(id_sala):
     nome_sala, valor_inicial, jogadores, criador = sala[0]
     
     # Verificar se tem saldo suficiente (metade do valor da sala)
-    valor_necessario = valor_inicial // 2
+    valor_necessario = valor_inicial / 2
     if saldo_usuario < valor_necessario:
         return jsonify({'error': f'Saldo insuficiente. Você precisa de pelo menos {valor_necessario} reais (metade do valor da sala) para entrar.'}), 400
     
@@ -148,7 +147,7 @@ def entrar_em_sala(id_sala):
     
     if sucesso:
         # Debitar metade do valor inicial
-        novos_reais = saldo_usuario - (valor_inicial // 2)
+        novos_reais = saldo_usuario - (valor_inicial / 2)
         executar_query_commit("UPDATE usuarios SET reais = %s WHERE id = %s", (novos_reais, id_usuario))
         
         # Notificação via Socket.IO removida temporariamente para evitar erro de conexão/timeout
