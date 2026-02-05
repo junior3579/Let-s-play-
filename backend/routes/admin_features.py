@@ -661,10 +661,10 @@ def transferir_lucro():
         
     # Verificar saldo do cofre
     cofre = executar_query_fetchall("SELECT valor_total FROM cofre_total WHERE id = 1")
-    saldo_cofre = cofre[0][0] if cofre else 0
+    saldo_cofre = float(cofre[0][0]) if cofre and cofre[0][0] is not None else 0.0
     
     if saldo_cofre < valor_transferir:
-        return jsonify({'error': f'Saldo insuficiente no cofre. Disponível: R$ {saldo_cofre}'}), 400
+        return jsonify({'error': f'Saldo insuficiente no cofre. Disponível: R$ {saldo_cofre:.2f}'}), 400
         
     # Verificar se usuário existe
     usuario = executar_query_fetchall("SELECT nome FROM usuarios WHERE id = %s", (usuario_id,))
@@ -689,11 +689,12 @@ def transferir_lucro():
         
         if sucesso_usuario:
             # 3. Registrar no histórico
+            # Usando data_registro que é o nome correto da coluna conforme usado no SELECT da rota de histórico
             executar_query_commit(
-                "INSERT INTO cofre_historico (id_sala, valor, descricao, tipo_transacao) VALUES (0, %s, %s, %s)",
+                "INSERT INTO cofre_historico (id_sala, valor, descricao, tipo_transacao, data_registro) VALUES (0, %s, %s, %s, CURRENT_TIMESTAMP)",
                 (-valor_transferir, f"Transferência de lucro para {nome_usuario}", 'transferencia')
             )
-            return jsonify({'message': f'R$ {valor_transferir} transferidos para {nome_usuario} com sucesso'})
+            return jsonify({'message': f'R$ {valor_transferir:.2f} transferidos para {nome_usuario} com sucesso'})
         else:
             # Rollback manual do cofre se falhar o usuário
             executar_query_commit(

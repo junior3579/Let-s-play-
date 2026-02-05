@@ -39,7 +39,7 @@ def migrate():
             id SERIAL PRIMARY KEY,
             id_sala INTEGER,
             valor NUMERIC,
-            data_recebimento TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            data_registro TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             descricao TEXT,
             tipo_transacao TEXT
         )
