@@ -165,6 +165,8 @@ def criar_tabelas_remoto():
             vencedor_id INTEGER
         )
         ''',
+        "ALTER TABLE salas ADD COLUMN IF NOT EXISTS status TEXT DEFAULT 'aberta'",
+        "ALTER TABLE salas ADD COLUMN IF NOT EXISTS vencedor_id INTEGER",
         '''
         CREATE TABLE IF NOT EXISTS apostas (
             id SERIAL PRIMARY KEY,
@@ -230,7 +232,33 @@ def criar_tabelas_remoto():
             participantes_ids TEXT,
             vencedores_ids TEXT
         )
+        ''',
         '''
+        CREATE TABLE IF NOT EXISTS configuracoes (
+            chave TEXT PRIMARY KEY,
+            valor TEXT NOT NULL
+        )
+        ''',
+        '''
+        CREATE TABLE IF NOT EXISTS cofre_total (
+            id INTEGER PRIMARY KEY,
+            valor_total NUMERIC DEFAULT 0,
+            ultima_atualizacao TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+        ''',
+        '''
+        CREATE TABLE IF NOT EXISTS cofre_historico (
+            id SERIAL PRIMARY KEY,
+            id_sala INTEGER,
+            valor NUMERIC NOT NULL,
+            data_registro TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            descricao TEXT,
+            tipo_transacao TEXT DEFAULT 'lucro_sala'
+        )
+        ''',
+        "INSERT INTO cofre_total (id, valor_total) VALUES (1, 0) ON CONFLICT (id) DO NOTHING",
+        "INSERT INTO configuracoes (chave, valor) VALUES ('porcentagem_casa', '10') ON CONFLICT (chave) DO NOTHING",
+        "INSERT INTO configuracoes (chave, valor) VALUES ('admin_password', '3579') ON CONFLICT (chave) DO NOTHING"
     ]
     for q in queries:
         success = executar_query_commit(q)
