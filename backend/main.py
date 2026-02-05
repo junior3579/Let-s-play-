@@ -6,11 +6,6 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
 from flask import Flask, send_from_directory
 from flask_cors import CORS
 from backend.database_config import criar_tabelas_remoto
-try:
-    from backend.migration_fix_cofre_column import migrate as fix_cofre
-    fix_cofre()
-except Exception as e:
-    print(f"Erro ao executar migração de correção: {e}")
 from backend.socketio_instance import init_socketio
 from backend.routes.auth import auth_bp
 from backend.routes.usuarios import usuarios_bp

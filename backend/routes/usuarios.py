@@ -5,10 +5,12 @@ usuarios_bp = Blueprint('usuarios', __name__)
 
 def validar_reais(reais):
     try:
-        reais_val = float(reais)
-        if reais_val < 0:
+        reais_int = int(reais)
+        if reais_int < 0:
             return None, "O valor de reais não pode ser negativo"
-        return reais_val, None
+        if reais_int % 2 != 0:
+            return None, "Não aceita número ímpar, apenas par"
+        return reais_int, None
     except:
         return None, "Por favor, insira um valor válido"
 

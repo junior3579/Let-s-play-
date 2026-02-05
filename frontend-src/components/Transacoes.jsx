@@ -14,26 +14,13 @@ const Transacoes = ({ user }) => {
   const [valorDeposito, setValorDeposito] = useState('')
   const [valorSaque, setValorSaque] = useState('')
 
-  const fetchWithRetry = async (url, options, retries = 3, backoff = 500) => {
-    for (let i = 0; i < retries; i++) {
-      try {
-        const res = await fetch(url, options);
-        if (res.status === 429 || res.status >= 500) throw new Error('Retryable error');
-        return res;
-      } catch (err) {
-        if (i === retries - 1) throw err;
-        await new Promise(r => setTimeout(r, backoff * (i + 1)));
-      }
-    }
-  };
-
   const solicitarTransacao = async (tipo, valor) => {
     setLoading(true)
     setError('')
     setSuccess('')
 
     try {
-      const response = await fetchWithRetry('/api/transacoes/solicitar', {
+      const response = await fetch('/api/transacoes/solicitar', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

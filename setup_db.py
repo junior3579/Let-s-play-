@@ -19,7 +19,7 @@ def setup_database():
             id SERIAL PRIMARY KEY,
             nome TEXT NOT NULL UNIQUE,
             senha TEXT NOT NULL,
-            reais NUMERIC NOT NULL DEFAULT 0,
+            reais INTEGER NOT NULL DEFAULT 0,
             whatsapp TEXT,
             pix_tipo TEXT,
             pix_chave TEXT,
@@ -120,7 +120,7 @@ def setup_database():
         )
         ''',
         # Adicionar colunas extras caso as tabelas já existam
-        "ALTER TABLE usuarios ALTER COLUMN reais TYPE NUMERIC USING reais::NUMERIC;",
+        "ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS reais INTEGER DEFAULT 0;",
         "ALTER TABLE salas ADD COLUMN IF NOT EXISTS vencedor_id INTEGER;",
         "ALTER TABLE salas ADD COLUMN IF NOT EXISTS status TEXT DEFAULT 'aberta';",
         "ALTER TABLE torneios ADD COLUMN IF NOT EXISTS valor_inscricao INTEGER DEFAULT 0;",

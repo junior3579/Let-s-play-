@@ -1,15 +1,10 @@
 import pg8000
 import os
 from datetime import datetime, timezone, timedelta
-import time
 import threading
-import logging
-
-# Configuração de Logging
-logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger(__name__)
 
 # Configurações do Banco de Dados (Via Variáveis de Ambiente)
+# Prioriza variáveis de ambiente, com fallbacks para os valores fornecidos no projeto
 DB_CONFIG = {
     "user": os.environ.get("DB_USER", "postgres.kubvbqvpuwecrlwwmrvc"),
     "password": os.environ.get("DB_PASSWORD", "Qwer35791931@"),
@@ -20,41 +15,28 @@ DB_CONFIG = {
 }
 
 class PG8000Pool:
-    """Pool de conexões otimizado para Supabase com limites rigorosos e validação."""
     def __init__(self, minconn, maxconn, **kwargs):
         self.kwargs = kwargs
         self.connections = []
         self.maxconn = maxconn
-        self.minconn = minconn
         self.lock = threading.Lock()
-        self._initialize_pool()
-
-    def _initialize_pool(self):
-        for _ in range(self.minconn):
+        for _ in range(minconn):
             try:
-                conn = self._create_connection()
-                if conn:
-                    self.connections.append(conn)
+                self.connections.append(self._create_connection())
             except Exception as e:
-                logger.error(f"Erro ao criar conexão inicial: {e}")
+                print(f"Erro ao criar conexão inicial: {e}")
 
     def _create_connection(self):
-        try:
-            kwargs = self.kwargs.copy()
-            if 'timeout' not in kwargs:
-                kwargs['timeout'] = 15
-            conn = pg8000.connect(**kwargs)
-            return conn
-        except Exception as e:
-            logger.error(f"Falha crítica ao conectar ao banco: {e}")
-            return None
+        kwargs = self.kwargs.copy()
+        if 'timeout' not in kwargs:
+            kwargs['timeout'] = 10
+        return pg8000.connect(**kwargs)
 
     def getconn(self):
         with self.lock:
             while self.connections:
                 conn = self.connections.pop()
                 try:
-                    # Teste rápido de saúde da conexão
                     cursor = conn.cursor()
                     cursor.execute("SELECT 1")
                     cursor.close()
@@ -63,14 +45,9 @@ class PG8000Pool:
                     try: conn.close()
                     except: pass
                     continue
-            
-            # Se não houver conexões no pool, cria uma nova se não exceder maxconn
-            # Nota: Em ambientes serverless como Render, o pool é por processo.
-            return self._create_connection()
+        return self._create_connection()
 
     def putconn(self, conn):
-        if not conn:
-            return
         with self.lock:
             if len(self.connections) < self.maxconn:
                 self.connections.append(conn)
@@ -80,13 +57,10 @@ class PG8000Pool:
                 except:
                     pass
 
-# Inicialização Global do Pool
-# Para o Supabase Free Tier, o limite total de conexões é baixo (geralmente 60-90 via pooler).
-# Usar um limite baixo por worker do Gunicorn é essencial.
+# Criar pool de conexões
 try:
     connection_pool = PG8000Pool(
-        minconn=1, 
-        maxconn=5, # Limite conservador para múltiplos acessos
+        2, 10,
         user=DB_CONFIG["user"],
         password=DB_CONFIG["password"],
         host=DB_CONFIG["host"],
@@ -94,69 +68,177 @@ try:
         database=DB_CONFIG["database"],
         ssl_context=DB_CONFIG["ssl_context"]
     )
-    logger.info("Pool de conexões com Supabase otimizado!")
+    print("✅ Pool de conexões com Supabase configurado!")
 except Exception as e:
-    logger.error(f"Erro ao configurar pool: {e}")
+    print(f"❌ Erro ao criar pool de conexões: {e}")
     connection_pool = None
 
-def executar_query_fetchall(query, params=None, retries=2):
-    """Executa SELECT com suporte a retentativas em caso de falha de conexão."""
-    for attempt in range(retries + 1):
-        conn = None
+def executar_query_fetchall(query, params=None):
+    conn = None
+    try:
+        if not connection_pool: return []
+        conn = connection_pool.getconn()
+        cursor = conn.cursor()
         try:
-            conn = connection_pool.getconn()
-            if not conn:
-                raise Exception("Não foi possível obter conexão do pool")
-            
-            cursor = conn.cursor()
-            cursor.execute(query, params) if params else cursor.execute(query)
+            if params:
+                cursor.execute(query, params)
+            else:
+                cursor.execute(query)
             result = cursor.fetchall()
             cursor.close()
-            connection_pool.putconn(conn)
             return result
         except Exception as e:
-            if conn:
-                try: conn.rollback()
-                except: pass
-                connection_pool.putconn(None) # Não devolve conexão quebrada
-            
-            if attempt < retries:
-                time.sleep(0.5 * (attempt + 1)) # Backoff exponencial simples
-                continue
-            logger.error(f"Erro persistente em fetchall: {e} | Query: {query}")
-            return []
-
-def executar_query_commit(query, params=None, retries=1):
-    """Executa INSERT/UPDATE/DELETE com suporte a retentativas."""
-    for attempt in range(retries + 1):
-        conn = None
-        try:
-            conn = connection_pool.getconn()
-            if not conn:
-                raise Exception("Não foi possível obter conexão do pool")
-            
-            cursor = conn.cursor()
-            cursor.execute(query, params) if params else cursor.execute(query)
-            conn.commit()
+            print(f"Erro na execução da query: {e}")
+            if conn: conn.rollback()
             cursor.close()
-            connection_pool.putconn(conn)
-            return True
-        except Exception as e:
-            if conn:
-                try: conn.rollback()
-                except: pass
-                connection_pool.putconn(None)
-            
-            if attempt < retries:
-                time.sleep(1)
-                continue
-            logger.error(f"Erro persistente em commit: {e} | Query: {query}")
-            return False
+            return []
+    except Exception as e:
+        print(f"Erro ao obter conexão: {e}")
+        return []
+    finally:
+        if conn:
+            try:
+                connection_pool.putconn(conn)
+            except:
+                pass
 
-# Mantendo as funções utilitárias originais, mas agora usando as versões otimizadas
+def executar_query_commit(query, params=None):
+    conn = None
+    try:
+        if not connection_pool: return False
+        conn = connection_pool.getconn()
+        cursor = conn.cursor()
+        if params:
+            cursor.execute(query, params)
+        else:
+            cursor.execute(query)
+        conn.commit()
+        cursor.close()
+        return True
+    except Exception as e:
+        print(f"Erro ao executar commit: {e}")
+        if conn:
+            try:
+                conn.rollback()
+            except:
+                pass
+        return False
+    finally:
+        if conn:
+            try:
+                connection_pool.putconn(conn)
+            except:
+                pass
+
 def criar_tabelas_remoto():
-    # ... (mesmo código anterior, mas agora as chamadas internas usam o novo commit)
-    pass
+    print("Iniciando criação de tabelas no Supabase...")
+    queries = [
+        '''
+        CREATE TABLE IF NOT EXISTS usuarios (
+            id SERIAL PRIMARY KEY,
+            nome TEXT NOT NULL UNIQUE,
+            senha TEXT NOT NULL,
+            reais INTEGER NOT NULL DEFAULT 0,
+            whatsapp TEXT,
+            pix_tipo TEXT,
+            pix_chave TEXT,
+            last_seen TEXT,
+            posicao INTEGER
+        )
+        ''',
+        '''
+        CREATE TABLE IF NOT EXISTS categorias (
+            id SERIAL PRIMARY KEY,
+            nome TEXT NOT NULL UNIQUE
+        )
+        ''',
+        '''
+        CREATE TABLE IF NOT EXISTS salas (
+            id_sala SERIAL PRIMARY KEY,
+            nome_sala TEXT NOT NULL,
+            valor_inicial INTEGER NOT NULL,
+            criador TEXT NOT NULL,
+            jogadores TEXT,
+            whatsapp TEXT,
+            categoria_id INTEGER REFERENCES categorias(id),
+            status TEXT DEFAULT 'aberta',
+            vencedor_id INTEGER
+        )
+        ''',
+        '''
+        CREATE TABLE IF NOT EXISTS apostas (
+            id SERIAL PRIMARY KEY,
+            id_sala INTEGER NOT NULL REFERENCES salas(id_sala),
+            id_usuario INTEGER NOT NULL REFERENCES usuarios(id),
+            valor_aposta INTEGER NOT NULL,
+            status TEXT DEFAULT 'pendente',
+            resultado TEXT DEFAULT 'pendente'
+        )
+        ''',
+        '''
+        CREATE TABLE IF NOT EXISTS transacoes (
+            id SERIAL PRIMARY KEY,
+            id_usuario INTEGER NOT NULL REFERENCES usuarios(id),
+            tipo TEXT NOT NULL,
+            valor INTEGER NOT NULL,
+            status TEXT DEFAULT 'pendente',
+            data_criacao TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+        ''',
+        '''
+        CREATE TABLE IF NOT EXISTS torneios (
+            id SERIAL PRIMARY KEY,
+            nome TEXT NOT NULL,
+            status TEXT DEFAULT 'inscricao',
+            vencedor_id INTEGER REFERENCES usuarios(id),
+            valor_inscricao INTEGER DEFAULT 0,
+            premio INTEGER DEFAULT 0,
+            data_inicio TEXT,
+            data_fim TEXT,
+            fase_atual TEXT
+        )
+        ''',
+        '''
+        CREATE TABLE IF NOT EXISTS torneio_participantes (
+            id SERIAL PRIMARY KEY,
+            torneio_id INTEGER NOT NULL REFERENCES torneios(id) ON DELETE CASCADE,
+            usuario_id INTEGER NOT NULL REFERENCES usuarios(id) ON DELETE CASCADE,
+            status TEXT DEFAULT 'ativo',
+            chave_id INTEGER,
+            adversario_id INTEGER,
+            data_inscricao TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+        ''',
+        '''
+        CREATE TABLE IF NOT EXISTS torneio_confrontos (
+            id SERIAL PRIMARY KEY,
+            torneio_id INTEGER NOT NULL REFERENCES torneios(id) ON DELETE CASCADE,
+            fase_nome TEXT NOT NULL,
+            jogador1_id INTEGER REFERENCES usuarios(id),
+            jogador2_id INTEGER REFERENCES usuarios(id),
+            vencedor_id INTEGER REFERENCES usuarios(id),
+            status TEXT DEFAULT 'pendente'
+        )
+        ''',
+        '''
+        CREATE TABLE IF NOT EXISTS torneio_fases (
+            id SERIAL PRIMARY KEY,
+            torneio_id INTEGER NOT NULL REFERENCES torneios(id) ON DELETE CASCADE,
+            nome_fase TEXT NOT NULL,
+            ordem INTEGER NOT NULL,
+            status TEXT DEFAULT 'pendente',
+            participantes_ids TEXT,
+            vencedores_ids TEXT
+        )
+        '''
+    ]
+    for q in queries:
+        success = executar_query_commit(q)
+        if success:
+            print(f"Sucesso ao executar: {q[:50]}...")
+        else:
+            print(f"Erro ao executar: {q[:50]}...")
+    print("Finalizado processo de criação de tabelas.")
 
 def reordenar_posicoes():
     query_usuarios = "SELECT id FROM usuarios ORDER BY posicao ASC, id ASC"
