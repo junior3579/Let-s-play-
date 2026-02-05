@@ -59,8 +59,9 @@ class PG8000Pool:
 
 # Criar pool de conexões
 try:
+    # Reduzido para 1, 2 para evitar erro de MaxClients no Supabase Transaction Mode
     connection_pool = PG8000Pool(
-        2, 10,
+        1, 2,
         user=DB_CONFIG["user"],
         password=DB_CONFIG["password"],
         host=DB_CONFIG["host"],

@@ -676,16 +676,18 @@ def transferir_lucro():
     # Executar transferência
     # 1. Aumentar saldo do usuário
     # Usamos int() para compatibilidade com o campo 'reais' que é INTEGER
+    # IMPORTANTE: O valor deve ser arredondado ou convertido para int corretamente
+    valor_int = int(float(valor_transferir))
     sucesso_usuario = executar_query_commit(
         "UPDATE usuarios SET reais = reais + %s WHERE id = %s",
-        (int(valor_transferir), usuario_id)
+        (valor_int, usuario_id)
     )
     
     if sucesso_usuario:
-        # 2. Diminuir do cofre
+        # 2. Diminuir do cofre (usando o valor original float para precisão no cofre)
         sucesso_cofre = executar_query_commit(
             "UPDATE cofre_total SET valor_total = valor_total - %s, ultima_atualizacao = CURRENT_TIMESTAMP WHERE id = 1",
-            (valor_transferir,)
+            (float(valor_transferir),)
         )
         
         if sucesso_cofre:
