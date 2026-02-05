@@ -684,7 +684,7 @@ def transferir_lucro():
         # 2. Aumentar saldo do usuário
         sucesso_usuario = executar_query_commit(
             "UPDATE usuarios SET reais = reais + %s WHERE id = %s",
-            (int(valor_transferir), usuario_id)
+            (valor_transferir, usuario_id)
         )
         
         if sucesso_usuario:

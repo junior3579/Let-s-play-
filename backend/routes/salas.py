@@ -258,7 +258,7 @@ def definir_ganhador_sala(id_sala):
         porcentagem_vencedor = (100 - porcentagem_casa) / 100.0
 
         # Calcular distribuição baseada na configuração
-        premio = int(valor_inicial * porcentagem_vencedor)
+        premio = valor_inicial * porcentagem_vencedor
         valor_cofre = valor_inicial - premio
         
         # Adicionar prêmio ao vencedor
