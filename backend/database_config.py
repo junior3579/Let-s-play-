@@ -12,8 +12,8 @@ import threading
 DB_CONFIG = {
     "user": os.environ.get("DB_USER", "neondb_owner"),
     "password": os.environ.get("DB_PASSWORD", ""), # Senha deve ser via ENV
-    "host": os.environ.get("DB_HOST", "ep-cool-darkness-a5f9x8v1.us-east-2.aws.neon.tech"),
-    "database": os.environ.get("DB_NAME", "neondb"),
+    "host": os.environ.get("DB_HOST", ""),
+    "database": os.environ.get("DB_NAME", ""),
     "port": int(os.environ.get("DB_PORT", 5432)),
     "ssl_context": True
 }

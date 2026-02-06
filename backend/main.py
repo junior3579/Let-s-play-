@@ -16,7 +16,7 @@ from backend.routes.transacoes import transacoes_bp
 from backend.routes.admin_features import admin_features_bp
 
 app = Flask(__name__, static_folder=os.path.join(os.path.dirname(__file__), 'static'))
-app.config['SECRET_KEY'] = 'asdf#FGSgvasgf$5$WGT'
+app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'chave-secreta-padrao-mude-em-producao')
 socketio = init_socketio(app)
 
 # Habilitar CORS para todas as rotas

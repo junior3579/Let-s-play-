@@ -54,13 +54,13 @@ Certifique-se de definir as seguintes variáveis de ambiente no painel do Render
 
 | Variável       | Descrição                                                              | Exemplo                                   |
 | :------------- | :--------------------------------------------------------------------- | :---------------------------------------- |
-| `DB_USER`      | Usuário do banco de dados PostgreSQL.                                  | `postgres.kubvbqvpuwecrlwwmrvc`           |
-| `DB_PASSWORD`  | Senha do usuário do banco de dados.                                    | `SuaSenhaSegura123`                       |
-| `DB_HOST`      | Host do servidor do banco de dados.                                    | `aws-1-sa-east-1.pooler.supabase.com`     |
+| `DB_USER`      | Usuário do banco de dados PostgreSQL.                                  | `seu_usuario_aqui`           |
+| `DB_PASSWORD`  | Senha do usuário do banco de dados.                                    | `********`                       |
+| `DB_HOST`      | Host do servidor do banco de dados.                                    | `seu_host_aqui`     |
 | `DB_NAME`      | Nome do banco de dados (geralmente `postgres`).                        | `postgres`                                |
 | `DB_PORT`      | Porta do banco de dados (geralmente `5432`).                           | `5432`                                    |
 | `DB_SSL`       | Define se a conexão SSL é usada.                                       | `True`                                    |
-| `SECRET_KEY`   | Chave secreta para segurança da aplicação Flask. **Gerar uma nova!** | `uma_chave_secreta_muito_longa_e_segura` |
+| `SECRET_KEY`   | Chave secreta para segurança da aplicação Flask. **Gerar uma nova!** | `sua_chave_secreta_aqui` |
 
 
 ## 5. Considerações Finais
