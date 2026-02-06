@@ -1,5 +1,9 @@
 import pg8000
 import os
+from dotenv import load_dotenv
+
+# Carregar variáveis de ambiente do arquivo .env
+load_dotenv()
 from datetime import datetime, timezone, timedelta
 import threading
 
@@ -11,7 +15,7 @@ DB_CONFIG = {
     "host": os.environ.get("DB_HOST", "ep-cool-darkness-a5f9x8v1.us-east-2.aws.neon.tech"),
     "database": os.environ.get("DB_NAME", "neondb"),
     "port": int(os.environ.get("DB_PORT", 5432)),
-    "ssl_context": True # Neon exige SSL
+    "ssl_context": True
 }
 
 class PG8000Pool:
