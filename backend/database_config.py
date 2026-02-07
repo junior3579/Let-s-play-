@@ -146,6 +146,7 @@ def criar_tabelas_remoto():
             whatsapp TEXT,
             pix_tipo TEXT,
             pix_chave TEXT,
+            last_seen TEXT,
             posicao INTEGER
         )
         ''',
@@ -247,4 +248,4 @@ def obter_menor_id_vago():
     while id_vago in ids_ocupados: id_vago += 1
     return id_vago
 
-
+# Funções de atividade de usuário removidas

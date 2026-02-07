@@ -522,10 +522,10 @@ def obter_historico_cofre():
     offset = request.args.get('offset', 0, type=int)
     
     historico = executar_query_fetchall(
-        """SELECT h.id, h.id_sala, h.valor, h.data_registro, h.descricao, s.nome_sala
+        """SELECT h.id, h.id_sala, h.valor, h.data_recebimento, h.descricao, s.nome_sala
            FROM cofre_historico h
            LEFT JOIN salas s ON h.id_sala = s.id_sala
-           ORDER BY h.data_registro DESC
+           ORDER BY h.data_recebimento DESC
            LIMIT %s OFFSET %s""",
         (limite, offset)
     )
@@ -579,7 +579,7 @@ def obter_estatisticas_cofre():
 
     # Último recebimento
     ultimo = executar_query_fetchall(
-        "SELECT valor, data_registro FROM cofre_historico ORDER BY data_registro DESC LIMIT 1"
+        "SELECT valor, data_recebimento FROM cofre_historico ORDER BY data_recebimento DESC LIMIT 1"
     )
     ultimo_recebimento = None
     if ultimo:
@@ -674,20 +674,20 @@ def transferir_lucro():
     nome_usuario = usuario[0][0]
     
     # Executar transferência
-    # 1. Diminuir do cofre
-    sucesso_cofre = executar_query_commit(
-        "UPDATE cofre_total SET valor_total = valor_total - %s, ultima_atualizacao = CURRENT_TIMESTAMP WHERE id = 1",
-        (valor_transferir,)
+    # 1. Aumentar saldo do usuário primeiro
+    sucesso_usuario = executar_query_commit(
+        "UPDATE usuarios SET reais = reais + %s WHERE id = %s",
+        (int(valor_transferir), usuario_id)
     )
     
-    if sucesso_cofre:
-        # 2. Aumentar saldo do usuário
-        sucesso_usuario = executar_query_commit(
-            "UPDATE usuarios SET reais = reais + %s WHERE id = %s",
-            (int(valor_transferir), usuario_id)
+    if sucesso_usuario:
+        # 2. Diminuir do cofre
+        sucesso_cofre = executar_query_commit(
+            "UPDATE cofre_total SET valor_total = valor_total - %s, ultima_atualizacao = CURRENT_TIMESTAMP WHERE id = 1",
+            (int(valor_transferir),)
         )
         
-        if sucesso_usuario:
+        if sucesso_cofre:
             # 3. Registrar no histórico
             executar_query_commit(
                 "INSERT INTO cofre_historico (id_sala, valor, descricao, tipo_transacao) VALUES (0, %s, %s, %s)",
@@ -695,12 +695,12 @@ def transferir_lucro():
             )
             return jsonify({'message': f'R$ {valor_transferir} transferidos para {nome_usuario} com sucesso'})
         else:
-            # Rollback manual do cofre se falhar o usuário
+            # Rollback do saldo do usuário se falhar a atualização do cofre
             executar_query_commit(
-                "UPDATE cofre_total SET valor_total = valor_total + %s WHERE id = 1",
-                (valor_transferir,)
+                "UPDATE usuarios SET reais = reais - %s WHERE id = %s",
+                (int(valor_transferir), usuario_id)
             )
-            return jsonify({'error': 'Erro ao adicionar saldo ao usuário'}), 500
+            return jsonify({'error': 'Erro ao atualizar saldo do cofre'}), 500
             
     return jsonify({'error': 'Erro ao processar transferência'}), 500
 

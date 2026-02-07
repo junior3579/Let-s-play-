@@ -11,7 +11,6 @@ from backend.routes.auth import auth_bp
 from backend.routes.usuarios import usuarios_bp
 from backend.routes.salas import salas_bp
 from backend.routes.apostas import apostas_bp
-
 from backend.routes.transacoes import transacoes_bp
 from backend.routes.admin_features import admin_features_bp
 
@@ -27,7 +26,6 @@ app.register_blueprint(auth_bp, url_prefix='/api')
 app.register_blueprint(usuarios_bp, url_prefix='/api')
 app.register_blueprint(salas_bp, url_prefix="/api")
 app.register_blueprint(apostas_bp, url_prefix="/api")
-
 app.register_blueprint(transacoes_bp, url_prefix='/api')
 app.register_blueprint(admin_features_bp, url_prefix='/api')
 
