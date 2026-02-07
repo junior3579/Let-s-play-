@@ -416,7 +416,6 @@ const AdminDashboard = ({ user }) => {
               <h1 className="text-3xl font-bold text-gray-800">Painel Administrativo</h1>
               <p className="text-gray-600">Bem-vindo, {user.nome}</p>
             </div>
-            {/* <OnlineUsers /> */}
           </div>
         </div>
 
