@@ -1,22 +1,19 @@
 import pg8000
 import os
-from dotenv import load_dotenv
-
-# Carregar variáveis de ambiente do arquivo .env
-load_dotenv()
 from datetime import datetime, timezone, timedelta
-import threading
+import time
 
-# Configurações do Banco de Dados (Neon PostgreSQL)
-# Prioriza variáveis de ambiente, com fallbacks para os valores do Neon
+# Configurações do Banco de Dados (Via Variáveis de Ambiente)
 DB_CONFIG = {
-    "user": os.environ.get("DB_USER", "neondb_owner"),
-    "password": os.environ.get("DB_PASSWORD", ""), # Senha deve ser via ENV
-    "host": os.environ.get("DB_HOST", ""),
-    "database": os.environ.get("DB_NAME", ""),
+    "user": os.environ.get("DB_USER", "postgres.kubvbqvpuwecrlwwmrvc"),
+    "password": os.environ.get("DB_PASSWORD", "Qwer35791931@"),
+    "host": os.environ.get("DB_HOST", "aws-1-sa-east-1.pooler.supabase.com"),
+    "database": os.environ.get("DB_NAME", "postgres"),
     "port": int(os.environ.get("DB_PORT", 5432)),
-    "ssl_context": True
+    "ssl_context": os.environ.get("DB_SSL", "True") == "True"
 }
+
+import threading
 
 class PG8000Pool:
     def __init__(self, minconn, maxconn, **kwargs):
@@ -31,6 +28,7 @@ class PG8000Pool:
                 print(f"Erro ao criar conexão inicial: {e}")
 
     def _create_connection(self):
+        # Adiciona timeout de conexão para evitar travamentos infinitos
         kwargs = self.kwargs.copy()
         if 'timeout' not in kwargs:
             kwargs['timeout'] = 10
@@ -41,6 +39,7 @@ class PG8000Pool:
             while self.connections:
                 conn = self.connections.pop()
                 try:
+                    # Verifica se a conexão ainda está viva
                     cursor = conn.cursor()
                     cursor.execute("SELECT 1")
                     cursor.close()
@@ -61,11 +60,10 @@ class PG8000Pool:
                 except:
                     pass
 
-# Criar pool de conexões
+# Criar pool de conexões com limites mais seguros para o Supabase
 try:
-    # Para o Neon (Serverless), um pool pequeno é ideal
     connection_pool = PG8000Pool(
-        1, 5,
+        2, 10, # Reduzido maxconn para evitar estourar limites do Supabase
         user=DB_CONFIG["user"],
         password=DB_CONFIG["password"],
         host=DB_CONFIG["host"],
@@ -73,15 +71,18 @@ try:
         database=DB_CONFIG["database"],
         ssl_context=DB_CONFIG["ssl_context"]
     )
-    print("✅ Pool de conexões com Neon configurado!")
+    print("Pool de conexões com Supabase configurado!")
 except Exception as e:
-    print(f"❌ Erro ao criar pool de conexões: {e}")
+    print(f"Erro ao criar pool de conexões: {e}")
     connection_pool = None
+
+def _convert_query(query):
+    # pg8000 usa %s diretamente, não precisa converter
+    return query
 
 def executar_query_fetchall(query, params=None):
     conn = None
     try:
-        if not connection_pool: return []
         conn = connection_pool.getconn()
         cursor = conn.cursor()
         try:
@@ -94,7 +95,7 @@ def executar_query_fetchall(query, params=None):
             return result
         except Exception as e:
             print(f"Erro na execução da query: {e}")
-            if conn: conn.rollback()
+            conn.rollback() # Garante o rollback se a query falhar
             cursor.close()
             return []
     except Exception as e:
@@ -110,7 +111,6 @@ def executar_query_fetchall(query, params=None):
 def executar_query_commit(query, params=None):
     conn = None
     try:
-        if not connection_pool: return False
         conn = connection_pool.getconn()
         cursor = conn.cursor()
         if params:
@@ -136,7 +136,6 @@ def executar_query_commit(query, params=None):
                 pass
 
 def criar_tabelas_remoto():
-    print("Iniciando criação de tabelas no Supabase...")
     queries = [
         '''
         CREATE TABLE IF NOT EXISTS usuarios (
@@ -170,8 +169,6 @@ def criar_tabelas_remoto():
             vencedor_id INTEGER
         )
         ''',
-        "ALTER TABLE salas ADD COLUMN IF NOT EXISTS status TEXT DEFAULT 'aberta'",
-        "ALTER TABLE salas ADD COLUMN IF NOT EXISTS vencedor_id INTEGER",
         '''
         CREATE TABLE IF NOT EXISTS apostas (
             id SERIAL PRIMARY KEY,
@@ -208,70 +205,27 @@ def criar_tabelas_remoto():
         '''
         CREATE TABLE IF NOT EXISTS torneio_participantes (
             id SERIAL PRIMARY KEY,
-            torneio_id INTEGER NOT NULL REFERENCES torneios(id) ON DELETE CASCADE,
-            usuario_id INTEGER NOT NULL REFERENCES usuarios(id) ON DELETE CASCADE,
+            torneio_id INTEGER NOT NULL REFERENCES torneios(id),
+            usuario_id INTEGER NOT NULL REFERENCES usuarios(id),
             status TEXT DEFAULT 'ativo',
             chave_id INTEGER,
-            adversario_id INTEGER,
-            data_inscricao TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            adversario_id INTEGER
         )
         ''',
         '''
         CREATE TABLE IF NOT EXISTS torneio_confrontos (
             id SERIAL PRIMARY KEY,
-            torneio_id INTEGER NOT NULL REFERENCES torneios(id) ON DELETE CASCADE,
+            torneio_id INTEGER NOT NULL REFERENCES torneios(id),
             fase_nome TEXT NOT NULL,
             jogador1_id INTEGER REFERENCES usuarios(id),
             jogador2_id INTEGER REFERENCES usuarios(id),
             vencedor_id INTEGER REFERENCES usuarios(id),
             status TEXT DEFAULT 'pendente'
         )
-        ''',
         '''
-        CREATE TABLE IF NOT EXISTS torneio_fases (
-            id SERIAL PRIMARY KEY,
-            torneio_id INTEGER NOT NULL REFERENCES torneios(id) ON DELETE CASCADE,
-            nome_fase TEXT NOT NULL,
-            ordem INTEGER NOT NULL,
-            status TEXT DEFAULT 'pendente',
-            participantes_ids TEXT,
-            vencedores_ids TEXT
-        )
-        ''',
-        '''
-        CREATE TABLE IF NOT EXISTS configuracoes (
-            chave TEXT PRIMARY KEY,
-            valor TEXT NOT NULL
-        )
-        ''',
-        '''
-        CREATE TABLE IF NOT EXISTS cofre_total (
-            id INTEGER PRIMARY KEY,
-            valor_total NUMERIC DEFAULT 0,
-            ultima_atualizacao TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-        )
-        ''',
-        '''
-        CREATE TABLE IF NOT EXISTS cofre_historico (
-            id SERIAL PRIMARY KEY,
-            id_sala INTEGER,
-            valor NUMERIC NOT NULL,
-            data_registro TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            descricao TEXT,
-            tipo_transacao TEXT DEFAULT 'lucro_sala'
-        )
-        ''',
-        "INSERT INTO cofre_total (id, valor_total) VALUES (1, 0) ON CONFLICT (id) DO NOTHING",
-        "INSERT INTO configuracoes (chave, valor) VALUES ('porcentagem_casa', '10') ON CONFLICT (chave) DO NOTHING",
-        "INSERT INTO configuracoes (chave, valor) VALUES ('admin_password', '3579') ON CONFLICT (chave) DO NOTHING"
     ]
     for q in queries:
-        success = executar_query_commit(q)
-        if success:
-            print(f"Sucesso ao executar: {q[:50]}...")
-        else:
-            print(f"Erro ao executar: {q[:50]}...")
-    print("Finalizado processo de criação de tabelas.")
+        executar_query_commit(q)
 
 def reordenar_posicoes():
     query_usuarios = "SELECT id FROM usuarios ORDER BY posicao ASC, id ASC"

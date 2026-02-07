@@ -674,23 +674,20 @@ def transferir_lucro():
     nome_usuario = usuario[0][0]
     
     # Executar transferência
-    # 1. Aumentar saldo do usuário
-    # Usamos int() para compatibilidade com o campo 'reais' que é INTEGER
-    # IMPORTANTE: O valor deve ser arredondado ou convertido para int corretamente
-    valor_int = int(float(valor_transferir))
-    sucesso_usuario = executar_query_commit(
-        "UPDATE usuarios SET reais = reais + %s WHERE id = %s",
-        (valor_int, usuario_id)
+    # 1. Diminuir do cofre
+    sucesso_cofre = executar_query_commit(
+        "UPDATE cofre_total SET valor_total = valor_total - %s, ultima_atualizacao = CURRENT_TIMESTAMP WHERE id = 1",
+        (valor_transferir,)
     )
     
-    if sucesso_usuario:
-        # 2. Diminuir do cofre (usando o valor original float para precisão no cofre)
-        sucesso_cofre = executar_query_commit(
-            "UPDATE cofre_total SET valor_total = valor_total - %s, ultima_atualizacao = CURRENT_TIMESTAMP WHERE id = 1",
-            (float(valor_transferir),)
+    if sucesso_cofre:
+        # 2. Aumentar saldo do usuário
+        sucesso_usuario = executar_query_commit(
+            "UPDATE usuarios SET reais = reais + %s WHERE id = %s",
+            (int(valor_transferir), usuario_id)
         )
         
-        if sucesso_cofre:
+        if sucesso_usuario:
             # 3. Registrar no histórico
             executar_query_commit(
                 "INSERT INTO cofre_historico (id_sala, valor, descricao, tipo_transacao) VALUES (0, %s, %s, %s)",
@@ -698,12 +695,12 @@ def transferir_lucro():
             )
             return jsonify({'message': f'R$ {valor_transferir} transferidos para {nome_usuario} com sucesso'})
         else:
-            # Rollback manual do usuário se falhar o cofre
+            # Rollback manual do cofre se falhar o usuário
             executar_query_commit(
-                "UPDATE usuarios SET reais = reais - %s WHERE id = %s",
-                (int(valor_transferir), usuario_id)
+                "UPDATE cofre_total SET valor_total = valor_total + %s WHERE id = 1",
+                (valor_transferir,)
             )
-            return jsonify({'error': 'Erro ao atualizar saldo do cofre'}), 500
+            return jsonify({'error': 'Erro ao adicionar saldo ao usuário'}), 500
             
     return jsonify({'error': 'Erro ao processar transferência'}), 500
 

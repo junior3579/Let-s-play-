@@ -28,7 +28,7 @@ import {
   ChevronRight,
   Gamepad2
 } from 'lucide-react'
-import OnlineUsers from './OnlineUsers'
+// import OnlineUsers from './OnlineUsers'
 import CofreTab from './CofreTab'
 
 const AdminDashboard = ({ user }) => {
@@ -416,7 +416,7 @@ const AdminDashboard = ({ user }) => {
               <h1 className="text-3xl font-bold text-gray-800">Painel Administrativo</h1>
               <p className="text-gray-600">Bem-vindo, {user.nome}</p>
             </div>
-            <OnlineUsers />
+            {/* <OnlineUsers /> */}
           </div>
         </div>
 
