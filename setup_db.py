@@ -23,7 +23,6 @@ def setup_database():
             whatsapp TEXT,
             pix_tipo TEXT,
             pix_chave TEXT,
-            last_seen TEXT,
             posicao INTEGER
         )
         ''',

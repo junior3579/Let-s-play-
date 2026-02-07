@@ -146,7 +146,6 @@ def criar_tabelas_remoto():
             whatsapp TEXT,
             pix_tipo TEXT,
             pix_chave TEXT,
-            last_seen TEXT,
             posicao INTEGER
         )
         ''',
@@ -248,28 +247,4 @@ def obter_menor_id_vago():
     while id_vago in ids_ocupados: id_vago += 1
     return id_vago
 
-def atualizar_atividade_usuario(id_usuario):
-    executar_query_commit(
-        "UPDATE usuarios SET last_seen = %s WHERE id = %s",
-        (datetime.now(timezone.utc).isoformat(), id_usuario)
-    )
 
-def listar_usuarios_online(minutos=5):
-    limite = (datetime.now(timezone.utc) - timedelta(minutes=minutos)).isoformat()
-    result = executar_query_fetchall(
-        "SELECT nome, last_seen FROM usuarios WHERE last_seen >= %s ORDER BY last_seen DESC",
-        (limite,)
-    )
-    if not result: return []
-    usuarios_online = []
-    for nome, last_seen_str in result:
-        if last_seen_str:
-            try:
-                last_seen = datetime.fromisoformat(last_seen_str)
-                last_seen_local = last_seen - timedelta(hours=3)
-                usuarios_online.append({
-                    'nome': nome,
-                    'last_seen': last_seen_local.strftime('%H:%M:%S')
-                })
-            except: continue
-    return usuarios_online

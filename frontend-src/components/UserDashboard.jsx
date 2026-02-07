@@ -9,7 +9,6 @@ import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Badge } from '@/components/ui/badge'
 import { Plus, Users, Coins, MessageCircle, DollarSign, Swords, Filter, LayoutGrid } from 'lucide-react'
-// import OnlineUsers from './OnlineUsers'
 import Transacoes from './Transacoes'
 
 const UserDashboard = ({ user }) => {
@@ -97,7 +96,7 @@ const UserDashboard = ({ user }) => {
 
   return (
     <div className="space-y-6">
-      <div className="grid grid-cols-1 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <Card className="p-6 flex items-center space-x-3">
           <Coins className="h-8 w-8 text-yellow-600" />
           <div><p className="text-sm text-gray-500">Saldo atual</p><p className="text-2xl font-bold">{saldoAtual} reais</p></div>

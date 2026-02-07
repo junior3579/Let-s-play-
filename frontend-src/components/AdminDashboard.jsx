@@ -28,7 +28,6 @@ import {
   ChevronRight,
   Gamepad2
 } from 'lucide-react'
-// import OnlineUsers from './OnlineUsers'
 import CofreTab from './CofreTab'
 
 const AdminDashboard = ({ user }) => {

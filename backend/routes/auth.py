@@ -1,5 +1,5 @@
 from flask import Blueprint, request, jsonify
-from backend.database_config import executar_query_fetchall, atualizar_atividade_usuario
+from backend.database_config import executar_query_fetchall
 from backend.socketio_instance import get_socketio
 
 auth_bp = Blueprint('auth', __name__)
@@ -37,10 +37,6 @@ def login():
     
     if result:
         id_usuario, reais = result[0]
-        atualizar_atividade_usuario(id_usuario)
-        socketio = get_socketio()
-        if socketio:
-            socketio.emit("user_online", {"nome": nome})
         return jsonify({
             'success': True,
             'user': {
